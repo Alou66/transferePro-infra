@@ -17,8 +17,7 @@ services:
       retries: 10
 
   backend:
-    build:
-      context: ../transfertPro_api
+    image: ghcr.io/alou66/transferepro-api:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -39,10 +38,7 @@ services:
       - "127.0.0.1:3001:3001"
 
   frontend:
-    build:
-      context: ../transferePro_web
-      args:
-        VITE_API_URL: /api
+    image: ghcr.io/alou66/transferepro-web:latest
     restart: unless-stopped
     depends_on:
       - backend
