@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-transfertpro}
       POSTGRES_DB: ${POSTGRES_DB:-transfertpro}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,7 +36,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
 
   frontend:
     build:
