@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-transfertpro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-transfertpro}
+      POSTGRES_DB: ${POSTGRES_DB:-transfertpro}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-transfertpro}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ../transfertPro_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-transfertpro}:${POSTGRES_PASSWORD:-transfertpro}@postgres:5432/${POSTGRES_DB:-transfertpro}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-Admin}
+      ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-Example}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PHONE: ${ADMIN_PHONE:-00 0000000}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build:
+      context: ../transferePro_web
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
