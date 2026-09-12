@@ -1,0 +1,3 @@
+transfert-pro.online {
+	reverse_proxy frontend:80
+}
