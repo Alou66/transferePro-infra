@@ -1,0 +1,10 @@
+services:
+  backend:
+    build:
+      context: ../transfertPro_api
+
+  frontend:
+    build:
+      context: ../transferePro_web
+      args:
+        VITE_API_URL: /api
