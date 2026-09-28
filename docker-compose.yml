@@ -17,7 +17,7 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/alou66/transferepro-api:latest
+    image: ghcr.io/alou66/transferepro-api:${API_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       postgres:
