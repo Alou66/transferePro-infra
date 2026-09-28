@@ -1,3 +1,7 @@
 transfert-pro.online {
+	@api {
+		path /api/*
+	}
+	reverse_proxy @api backend:3001
 	reverse_proxy frontend:80
 }
