@@ -38,7 +38,7 @@ services:
       - "127.0.0.1:3001:3001"
 
   frontend:
-    image: ghcr.io/alou66/transferepro-web:latest
+    image: ghcr.io/alou66/transferepro-web:${WEB_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       - backend
