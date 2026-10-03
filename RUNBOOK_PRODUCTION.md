@@ -1001,3 +1001,151 @@ Espérer
 Le but n'est pas simplement de remettre l'application en ligne.
 
 Le but est de **comprendre pourquoi elle est tombée et empêcher la répétition du problème**.
+
+---
+
+# 27. Réinitialisation des données de test
+
+## Usage unique et prévu
+
+Cette procédure sert **exclusivement** au reset initial des données de test,
+avant le démarrage réel de la plateforme.
+
+Une fois les premiers agents réels inscrits et les premiers transferts réels
+effectués, cette opération ne doit plus être utilisée : elle supprimerait des
+comptes agents et des opérations réelles, sans possibilité de récupération.
+
+## Ce que l'opération supprime
+
+```text
+transfers          — TOUS les transferts (contenu, bénéficiaires, paiements)
+cash_collections   — TOUS les encaissements
+users (AGENT)      — TOUS les comptes agents
+```
+
+## Ce que l'opération conserve
+
+```text
+users (ADMIN)      — le compte administrateur, y compris celui connecté
+cities             — toutes les villes
+_prisma_migrations — historique des migrations
+```
+
+Aucune table, aucun volume PostgreSQL et aucun schéma n'est supprimé. Il ne
+s'agit pas d'un `DROP`, d'un `TRUNCATE` ni d'un `DELETE FROM users` sans
+condition : la suppression des comptes est explicitement filtrée sur
+`role = 'AGENT'`.
+
+## Protections actives
+
+L'opération n'est possible que si les quatre conditions sont réunies :
+
+```text
+1. requête authentifiée (JWT)
+2. rôle ADMIN
+3. corps contenant exactement {"confirmation":"RESET"}
+4. variable d'environnement ENABLE_DATA_RESET=true côté backend
+```
+
+Si `ENABLE_DATA_RESET` n'est pas à `true`, l'API répond `403` même si
+l'administrateur est connecté et saisit correctement `RESET`. C'est le
+contrôle qui compte : l'interface masque déjà le bouton dans ce cas, mais ce
+n'est pas elle qui protège la base.
+
+## Procédure
+
+Se connecter à l'EC2 puis :
+
+```bash
+cd ~/transfertPro/transferePro-infra
+```
+
+### 1. Activer temporairement la fonctionnalité
+
+```bash
+nano .env
+```
+
+Ajouter ou modifier :
+
+```text
+ENABLE_DATA_RESET=true
+```
+
+Appliquer :
+
+```bash
+docker compose up -d backend
+```
+
+### 2. Vérifier que l'API autorise bien l'opération
+
+```bash
+docker compose exec backend printenv ENABLE_DATA_RESET
+```
+
+La sortie doit afficher `true`.
+
+### 3. Effectuer la réinitialisation
+
+Dans l'interface : `Administration → Maintenance`, bouton
+`Réinitialiser les données`, puis saisir exactement `RESET`.
+
+### 4. Vérifier le résultat
+
+```bash
+docker compose logs --tail=50 backend
+```
+
+Une ligne d'audit doit apparaître :
+
+```text
+[AUDIT] action=RESET_TRANSACTIONAL_DATA actor=<uuid> role=ADMIN outcome=SUCCESS date=<ISO>
+```
+
+Contrôle en base (lecture seule) :
+
+```bash
+docker compose exec postgres psql -U transfertpro -d transfertpro -c \
+  "SELECT (SELECT count(*) FROM users WHERE role = 'ADMIN') AS admins, (SELECT count(*) FROM users WHERE role = 'AGENT') AS agents, (SELECT count(*) FROM transfers) AS transfers, (SELECT count(*) FROM cash_collections) AS encaissements, (SELECT count(*) FROM cities) AS villes;"
+```
+
+Résultat attendu :
+
+```text
+ admins | agents | transfers | encaissements | villes
+--------+--------+-----------+---------------+--------
+      1 |      0 |         0 |             0 |       3
+```
+
+Puis se reconnecter avec le compte administrateur pour confirmer que l'accès
+fonctionne, et vérifier que l'inscription d'un agent et la liste des villes
+fonctionnent toujours.
+
+### 5. Désactiver immédiatement
+
+```bash
+nano .env
+```
+
+```text
+ENABLE_DATA_RESET=false
+```
+
+Puis :
+
+```bash
+docker compose up -d backend
+docker compose exec backend printenv ENABLE_DATA_RESET
+```
+
+La sortie doit afficher `false`. L'endpoint refuse désormais toute suppression.
+
+## Ne jamais
+
+```text
+[ ] Laisser ENABLE_DATA_RESET=true après le reset initial
+[ ] Utiliser cette procédure pour « nettoyer » des données de production
+[ ] Remplacer cette procédure par un DROP DATABASE / DROP SCHEMA / docker volume rm
+[ ] Contourner la confirmation RESET pour aller plus vite
+```

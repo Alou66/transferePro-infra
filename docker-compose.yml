@@ -34,6 +34,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
       JWT_SECRET: ${JWT_SECRET:-change_this_secret_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      # Réinitialisation des données (opération destructive). Absente ou égale à
+      # toute valeur autre que "true" : l'API refuse la suppression. À n'activer
+      # que pour le reset initial des données de test, puis à remettre à false.
+      ENABLE_DATA_RESET: ${ENABLE_DATA_RESET:-false}
     ports:
       - "127.0.0.1:3001:3001"
 
